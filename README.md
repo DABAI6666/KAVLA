@@ -2,8 +2,8 @@
 ## :mag: Environment
 - Pytorch `2.0.1`
 ```shell
-conda env create -n AKGMA python=3.8
-conda activate AKGMA
+conda env create -n KAVLA python=3.8
+conda activate KAVLA
 pip install -r requirement.txt
 ```
 ## :racehorse: Train
@@ -23,7 +23,7 @@ export PYTHONPATH=path_to_current_dir
 
 
 
-#### Training EKA with LLMs 
+#### Training VKA with LLMs 
 
 Replace `pretrain_opt_adapter` with the save path of your pretrained EKA.
 
@@ -32,7 +32,7 @@ bash scripts/decoder_model/pretrain_knowledge.sh
 ```
 
 
-#### Fine-tune EKA on the Knowledge Data with LLM (Optional)
+#### Fine-tune VKA on the Knowledge Data with LLM 
 Change the attribute `pretrain_knowledge_params_path` to the path where the parameters extracted in the previous stage are stored.
 
 ``` shell
@@ -41,20 +41,20 @@ bash scripts/knowledge/pretrain.sh
 
 
 
-#### Fine-tune EKA and SCKA on the MsCOCO
+#### Fine-tune VKA and FRKA on the MsCOCO
 
 Finally, we used a two-stage training method when fine-tuning FKA.
 
 ``` shell
 
-bash scripts/knowledge_ic/image_caption_ft.sh
+bash scripts/knowledge_rd/rumor_detection_ft.sh
 ```
 
 
 #### Evalution
 ``` shell
 
-bash scripts/knowledge_ic/eval/caption_test.sh
+bash scripts/knowledge_rd/eval/rumor_detection_test.sh
 ```
 
 
