@@ -52,31 +52,26 @@ class ModelArguments:
     freeze_backbone: bool = field(default=False)
     tune_mm_mlp_adapter: bool = field(default=False)
     vision_tower: Optional[str] = field(default=None)
-    mm_vision_select_layer: Optional[int] = field(default=-1)   # default to the last layer
+    mm_vision_select_layer: Optional[int] = field(default=-1)
     pretrain_mm_mlp_adapter: Optional[str] = field(default=None)
     pretrain_opt_adapter: Optional[str] = field(default=None)
     mm_projector_type: Optional[str] = field(default='linear')
     mm_use_im_start_end: bool = field(default=False)
     mm_use_im_patch_token: bool = field(default=True)
-    pretrain_knowledge_params_path: str = field(default=None)
+    pretrain_knowledge_params_path: Optional[str] = field(default=None)
     mm_vision_select_feature: Optional[str] = field(default="cls_patch")
     knowledge_pretrain: Optional[bool] = field(default=False)
     knowledge_finetune: Optional[bool] = field(default=False)
 
-    
-
-
 @dataclass
 class DataArguments:
-    data_path: str = field(default=None,
-                           metadata={"help": "Path to the training data."})
-    triple_data_path: str = field(default=None,
-                           metadata={"help": "Path to the training knowledge triples data."})
+    data_path: str = field(default=None, metadata={"help": "Path to the training data."})
+    triple_data_path: str = field(default=None, metadata={"help": "Path to the training knowledge triples data."})
     lazy_preprocess: bool = False
     is_multimodal: bool = False
     image_folder: Optional[str] = field(default=None)
     image_aspect_ratio: str = 'square'
-
+    image_res: int = 224
 
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
@@ -85,25 +80,10 @@ class TrainingArguments(transformers.TrainingArguments):
     remove_unused_columns: bool = field(default=False)
     freeze_mm_mlp_adapter: bool = field(default=False)
     mpt_attn_impl: Optional[str] = field(default="triton")
-    model_max_length: int = field(
-        default=512,
-        metadata={
-            "help":
-            "Maximum sequence length. Sequences will be right padded (and possibly truncated)."
-        },
-    )
-    double_quant: bool = field(
-        default=True,
-        metadata={"help": "Compress the quantization statistics through double quantization."}
-    )
-    quant_type: str = field(
-        default="nf4",
-        metadata={"help": "Quantization data type to use. Should be one of `fp4` or `nf4`."}
-    )
-    bits: int = field(
-        default=16,
-        metadata={"help": "How many bits to use."}
-    )
+    model_max_length: int = field(default=512, metadata={"help": "Maximum sequence length."})
+    double_quant: bool = field(default=True, metadata={"help": "Compress quant stats via double quantization."})
+    quant_type: str = field(default="nf4", metadata={"help": "Quantization data type to use."})
+    bits: int = field(default=16, metadata={"help": "How many bits to use."})
     lora_enable: bool = False
     lora_r: int = 64
     lora_alpha: int = 16
@@ -112,6 +92,68 @@ class TrainingArguments(transformers.TrainingArguments):
     lora_bias: str = "none"
     mm_projector_lr: Optional[float] = None
     group_by_modality_length: bool = field(default=False)
+
+class FakeNewsDetectionDataset(Dataset):
+    def __init__(self, ann_file, knowledge_file, tokenizer, transform=None, max_words=30, image_res=224):
+        self.ann = []
+        for f in ann_file:
+            with open(f, 'r', encoding='utf-8') as file:
+                for line in file:
+                    self.ann.append(json.loads(line))
+
+        self.knowledge = json.load(open(knowledge_file, "r"))
+        self.tokenizer = tokenizer
+        self.transform = transform
+        self.max_words = max_words
+        self.image_res = image_res
+
+        self.label_to_answer = {
+            'orig': "B. No.",
+            'face_swap': "A. Yes.",
+            'face_attribute': "A. Yes.",
+            'text_swap': "A. Yes.",
+            'text_attribute': "A. Yes.",
+            'face_swap&text_swap': "A. Yes.",
+            'face_swap&text_attribute': "A. Yes.",
+            'face_attribute&text_swap': "A. Yes.",
+            'face_attribute&text_attribute': "A. Yes."
+        }
+
+        self.describe_template = "The following are multiple choice questions about fake news detection. \n\nThe caption of news is: "
+        self.describe_question = ". The identity and emotion of the face, and the semantic and sentiment of the text should not be manipulated. Question: Is there any fake face or fake words in the news?\nA. Yes\nB. No\nThe answer is:"
+
+    def __len__(self):
+        return len(self.ann)
+
+    def __getitem__(self, index):
+        ann = self.ann[index]
+        caption = pre_caption(ann["text"], self.max_words)
+        label = ann["fake_cls"]
+        img_path = os.path.join('../data', ann["image"])
+
+        image = Image.open(img_path).convert("RGB")
+        if self.transform:
+            image = self.transform(image)
+
+        knowledge_triples = self.knowledge.get(ann["id"], [])
+        triple_prompt = ""
+        if knowledge_triples:
+            triple_prompt = "Given the associating structured triple from a knowledge graph of this image: " + \
+                            ", ".join(knowledge_triples) + ". "
+
+        prompt = triple_prompt + self.describe_template + caption + self.describe_question
+        answer = self.label_to_answer[label]
+
+        conversation = [
+            {"from": "human", "value": prompt},
+            {"from": "gpt", "value": answer}
+        ]
+
+        return dict(
+            image=image,
+            conversations=conversation,
+            label=label
+        )
 
 
 def maybe_zero_3(param, ignore_status=False, name=None):
