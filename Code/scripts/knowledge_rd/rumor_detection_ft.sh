@@ -3,12 +3,9 @@ deepspeed llava/train/train_mem_knowledge.py \
     --deepspeed ./scripts/zero2.json \
     --model_name_or_path lmsys/vicuna-7b-v1.5/ \
     --version v1 \
-    --data_path playground/image_caption/ms_coco.json \
+    --data_path playground/rumor_detection/twitter.json \
     --pretrain_mm_mlp_adapter llava-v1.5-mlp2x-336px-pretrain-vicuna-7b-v1.5/mm_projector.bin \
     --image_folder path_to_store_image \
-    --triple_data_path playground/knowledge_data/wikipedia_images_2m_triple_coco.json \
-    --scka_triple_path playground/knowledge_data/wikipedia_images_2m_scka_triple_coco.json \
-    --triple_vkpair_data_path playground/knowledge_data/wikipedia_images_2m_triple.json \
     --vision_tower openai/clip-vit-large-patch14-336 \
     --mm_projector_type mlp2x_gelu \
     --mm_vision_select_layer -2 \
@@ -17,7 +14,7 @@ deepspeed llava/train/train_mem_knowledge.py \
     --image_aspect_ratio pad \
     --group_by_modality_length True \
     --bf16 True \
-    --output_dir ./checkpoints/llava_scka_ic \
+    --output_dir ./checkpoints/llava_twiiter_rd \
     --num_train_epochs 2 \
     --per_device_train_batch_size 8 \
     --gradient_accumulation_steps 4 \
