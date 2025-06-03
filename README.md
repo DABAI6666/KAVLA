@@ -41,7 +41,7 @@ bash scripts/knowledge/pretrain.sh
 
 
 
-#### Fine-tune VKA and FRKA on the MsCOCO
+#### Fine-tune VKA and FKA
 
 Finally, we used a two-stage training method when fine-tuning FKA.
 
