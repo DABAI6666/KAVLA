@@ -14,6 +14,4 @@ python -m llava.eval.model_rumor_loader \
 
 wait
 
-# 运行虚假新闻检测的评估脚本
-python playground/rumor_detection/eval/rumor_eval.py \
-      --pred_file ./playground/rumor_detection/eval/answers/$SPLIT/$CKPT/$STEP.jsonl
+
